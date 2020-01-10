@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.40
-Release: 5%{?dist}
+Release: 6%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -42,6 +42,8 @@ Patch20: openldap-support-tlsv1-and-later.patch
 Patch21: openldap-ppc64-crash.patch
 # this is a temporary fix for #1144294, it should be solved properly
 Patch22: openldap-temporary-ssl-thr-init-race.patch
+# CVE-2015-6908, ITS#8240
+Patch23: openldap-ITS8240-remove-obsolete-assert.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
@@ -165,6 +167,7 @@ pushd openldap-%{version}
 %patch21 -p1 -b .ppc64-crash
 %endif
 %patch22 -p1 -b .temporary-ssl-thr-init-race
+%patch23 -p1 -b .ITS8240-remove-obsolete-assert
 
 cp %{_datadir}/libtool/config/config.{sub,guess} build/
 
@@ -737,6 +740,9 @@ exit 0
 %attr(0644,root,root)      %{evolution_connector_libdir}/*.a
 
 %changelog
+* Thu Sep 17 2015 Matúš Honěk <mhonek@redhat.com> - 2.4.40-6
+- CVE-2015-6908 openldap: ber_get_next denial of service vulnerability (#1263171)
+
 * Thu May 21 2015 Jan Synáček <jsynacek@redhat.com> - 2.4.40-5
 - fix: nslcd segfaults due to incorrect mutex initialization (#1144294)
 

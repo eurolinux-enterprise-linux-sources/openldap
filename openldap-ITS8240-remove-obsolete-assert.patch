@@ -1,0 +1,15 @@
+CVE-2015-6908 openldap: ber_get_next denial of service vulnerability
+Upstream: ITS#8240
+
+diff --git a/libraries/liblber/io.c b/libraries/liblber/io.c
+--- a/libraries/liblber/io.c
++++ b/libraries/liblber/io.c
+@@ -679,7 +679,7 @@ done:
+ 		return (ber->ber_tag);
+ 	}
+ 
++	/* invalid input */
+-	assert( 0 ); /* ber structure is messed up ?*/
+ 	return LBER_DEFAULT;
+ }
+ 

@@ -1,0 +1,27 @@
+Use what NSS considers default for DEFAULT cipher string.
+
+Author: Matus Honek <mhonek@redhat.com>
+Resolves: #1300701
+Backports: #1245279
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -645,7 +645,16 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 			}
+ 		} else if (!strcmp(cipher, "DEFAULT")) {
+ 			for (i=0; i<ciphernum; i++) {
+-				cipher_list[i] = ciphers_def[i].enabled == SSL_ALLOWED ? 1 : 0;
++				PRBool enabled;
++				if (SSL_CipherPrefGetDefault(ciphers_def[i].num, &enabled) == SECSuccess) {
++					if (!(ciphers_def[i].attr & SSL_eNULL)) {
++						cipher_list[i] = enabled == SSL_ALLOWED ? 1 : 0;
++					} else {
++						cipher_list[i] = -1;
++					}
++				} else {
++					cipher_list[i] = -1;
++				}
+ 			}
+ 		} else {
+ 			int mask = 0;

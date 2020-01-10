@@ -1,0 +1,35 @@
+Correct log levels in ppolicy overlay.
+
+Author: Matus Honek <mhonek@redhat.com>
+Related: rhbz#1255046
+
+diff --git a/servers/slapd/overlays/ppolicy.c b/servers/slapd/overlays/ppolicy.c
+--- a/servers/slapd/overlays/ppolicy.c
++++ b/servers/slapd/overlays/ppolicy.c
+@@ -643,7 +643,7 @@ check_password_quality( struct berval *cred, PassPolicy *pp, LDAPPasswordPolicyE
+ 		if ((mod = lt_dlopen( pp->pwdCheckModule )) == NULL) {
+ 			err = lt_dlerror();
+ 
+-			Debug(LDAP_DEBUG_ANY,
++			Log3(LDAP_DEBUG_ANY, LDAP_LEVEL_WARNING,
+ 			"check_password_quality: lt_dlopen failed: (%s) %s.\n",
+ 				pp->pwdCheckModule, err, 0 );
+ 			ok = LDAP_OTHER; /* internal error */
+@@ -658,7 +658,7 @@ check_password_quality( struct berval *cred, PassPolicy *pp, LDAPPasswordPolicyE
+ 			if ((prog = lt_dlsym( mod, "check_password" )) == NULL) {
+ 				err = lt_dlerror();
+ 			    
+-				Debug(LDAP_DEBUG_ANY,
++				Log3(LDAP_DEBUG_ANY, LDAP_LEVEL_WARNING,
+ 					"check_password_quality: lt_dlsym failed: (%s) %s.\n",
+ 					pp->pwdCheckModule, err, 0 );
+ 				ok = LDAP_OTHER;
+@@ -667,7 +667,7 @@ check_password_quality( struct berval *cred, PassPolicy *pp, LDAPPasswordPolicyE
+ 				ok = prog( ptr, txt, e );
+ 				ldap_pvt_thread_mutex_unlock( &chk_syntax_mutex );
+ 				if (ok != LDAP_SUCCESS) {
+-					Debug(LDAP_DEBUG_ANY,
++					Log3(LDAP_DEBUG_ANY, LDAP_LEVEL_WARNING,
+ 						"check_password_quality: module error: (%s) %s.[%d]\n",
+ 						pp->pwdCheckModule, *txt ? *txt : "", ok );
+ 				}

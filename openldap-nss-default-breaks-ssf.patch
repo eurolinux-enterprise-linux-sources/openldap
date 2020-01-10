@@ -1,0 +1,19 @@
+As SSF calculation is not being updated with latest changes in ciphers,
+allowing AESGCM ciphers decreases effective SSF. Therefore, in order to
+still have ssf==256 we have to exclude AESGCM ciphers.
+
+Author: Matus Honek <mhonek@redhat.com>
+Related: #1300701#c9
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -634,7 +634,7 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 			for (i=0; i<ciphernum; i++) {
+ 				PRBool enabled;
+ 				if (SSL_CipherPrefGetDefault(ciphers_def[i].num, &enabled) == SECSuccess) {
+-					if (!(ciphers_def[i].attr & SSL_eNULL)) {
++					if (!(ciphers_def[i].attr & (SSL_eNULL | SSL_AESGCM))) {  // exclude AESGCM to not break SSF
+ 						cipher_list[i] = enabled == SSL_ALLOWED ? 1 : 0;
+ 					} else {
+ 						cipher_list[i] = -1;

@@ -1,0 +1,39 @@
+Update MozNSS cipher attributes definitions
+
+Author: Matus Honek <mhonek@redhat.com>
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -76,6 +76,11 @@
+ #define HAVE_SECMOD_RESTARTMODULES 1
+ #endif
+ 
++/* NSS 3.20.0 and later have SHA384 ciphers */
++#if NSS_VERSION_INT >= 0x03140000
++#define HAVE_SHA384_CIPHERS 1
++#endif
++
+ /* InitContext does not currently work in server mode */
+ /* #define INITCONTEXT_HACK 1 */
+ 
+@@ -231,6 +236,11 @@ typedef struct {
+ #define SSL_kECDH       0x00010000L
+ #define SSL_kECDHE      0x00020000L
+ #define SSL_aECDSA      0x00040000L
++#define SSL_SHA256      0x00080000L
++#define SSL_SHA384      0x00100000L
++#define SSL_kEECDH      0x00200000L
++#define SSL_AESGCM      0x00400000L
++#define SSL_AEAD        0x00800000L
+
+ /* cipher strength */
+ #define SSL_NULL      0x00000001L
+@@ -244,6 +251,7 @@ typedef struct {
+ #define SSL3  0x00000002L
+ /* OpenSSL treats SSL3 and TLSv1 the same */
+ #define TLS1  SSL3
++#define TLS1_2 0x00000004L
+ 
+ /* Cipher translation */
+ static cipher_properties ciphers_def[] = {

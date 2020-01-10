@@ -1,0 +1,40 @@
+Update MozNSS OpenSSL-like parsing code
+
+Author: Matus Honek <mhonek@redhat.com>
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -659,6 +667,8 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					protocol |= SSL2;
+ 				} else if (!strcmp(cipher, "SSLv3")) {
+ 					protocol |= SSL3;
++				} else if (!strcmp(cipher, "TLSv1.2")) {
++					protocol |= TLS1_2;
+ 				} else if (!strcmp(cipher, "TLSv1")) {
+ 					protocol |= TLS1;
+ 				} else if (!strcmp(cipher, "HIGH")) {
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+index cd2448a..c874be6 100644
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -662,6 +662,8 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					mask |= SSL_AES128;
+ 				} else if (!strcmp(cipher, "AES256")) {
+ 					mask |= SSL_AES256;
++				} else if (!strcmp(cipher, "AESGCM")) {
++					mask |= SSL_AESGCM;
+ 				} else if (!strcmp(cipher, "AES")) {
+ 					mask |= SSL_AES;
+ 				} else if (!strcmp(cipher, "3DES")) {
+@@ -674,6 +676,10 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					mask |= SSL_RC2;
+ 				} else if (!strcmp(cipher, "MD5")) {
+ 					mask |= SSL_MD5;
++				} else if (!strcmp(cipher, "SHA256")) {
++					mask |= SSL_SHA256;
++				} else if (!strcmp(cipher, "SHA384")) {
++					mask |= SSL_SHA384;
+ 				} else if ((!strcmp(cipher, "SHA")) || (!strcmp(cipher, "SHA1"))) {
+ 					mask |= SSL_SHA1;
+ 				} else if (!strcmp(cipher, "EDH")) {

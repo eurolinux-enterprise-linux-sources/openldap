@@ -1,0 +1,18 @@
+Under high load slapd crashes when running slap_writewait_play.
+This patch removes the call, but should not be considered a real
+fix of the issue.
+
+Author: Matus Honek <mhonek@redhat.com>
+Resolves: #1257543
+
+diff --git a/servers/slapd/result.c b/servers/slapd/result.c
+--- a/servers/slapd/result.c
++++ b/servers/slapd/result.c
+@@ -364,7 +364,6 @@ static long send_ldap_ber(
+ 		}
+ 
+ 		/* wait for socket to be write-ready */
+-		slap_writewait_play( op );
+ 		ldap_pvt_thread_mutex_lock( &conn->c_write2_mutex );
+ 		conn->c_writewaiter = 1;
+ 		slapd_set_write( conn->c_sd, 2 );

@@ -1,0 +1,17 @@
+Correct key pointer usage in bdb_idl_fetch_key.
+
+Author: Shogo Matsumoto
+Resolves: #1212283
+
+diff --git a/servers/slapd/back-bdb/idl.c b/servers/slapd/back-bdb/idl.c
+--- a/servers/slapd/back-bdb/idl.c
++++ b/servers/slapd/back-bdb/idl.c
+@@ -628,7 +628,7 @@ bdb_idl_fetch_key(
+ 					BDB_DISK2ID( j, i );
+ 				}
+ 			}
+-			rc = cursor->c_get( cursor, key, &data, flags | DB_NEXT_DUP );
++			rc = cursor->c_get( cursor, kptr, &data, flags | DB_NEXT_DUP );
+ 		}
+ 		if ( rc == DB_NOTFOUND ) rc = 0;
+ 		ids[0] = i - ids;

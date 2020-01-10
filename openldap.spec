@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.40
-Release: 7%{?dist}
+Release: 12%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -26,6 +26,7 @@ Patch0: openldap-manpages.patch
 Patch1: openldap-security-pie.patch
 Patch2: openldap-sql-linking.patch
 Patch3: openldap-reentrant-gethostby.patch
+Patch4: openldap-ppolicy-loglevels.patch
 Patch5: openldap-smbk5pwd-overlay.patch
 Patch6: openldap-ldaprc-currentdir.patch
 Patch7: openldap-userconfig-setgid.patch
@@ -45,10 +46,22 @@ Patch21: openldap-ppc64-crash.patch
 Patch22: openldap-temporary-ssl-thr-init-race.patch
 # CVE-2015-6908, ITS#8240
 Patch23: openldap-ITS8240-remove-obsolete-assert.patch
+# logically revert ITS#7904 for it breaks as in #1257543
+Patch24: openldap-remove-slap_writewait_play.patch
+Patch25: openldap-bdb_idl_fetch_key-correct-key-pointer.patch
+# ITS#8329
+Patch26: openldap-ITS8329-back_sql-id_query.patch
+Patch27: openldap-manpages-slapd-conf-TLS.patch
+Patch28: openldap-nss-cipher-attributes.patch
+Patch29: openldap-nss-ciphers-parsing.patch
+Patch30: openldap-nss-ciphers-use-nss-defaults.patch
+Patch31: openldap-nss-ciphers-definitions.patch
+Patch32: openldap-nss-default-breaks-ssf.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
 Patch91: check-password.patch
+Patch92: check-password-loglevels.patch
 
 # patches for the evolution library (see README.evolution)
 Patch200: openldap-evolution-ntlm.patch
@@ -150,6 +163,7 @@ pushd openldap-%{version}
 %patch1 -p1 -b .security-pie
 %patch2 -p1 -b .sql-linking
 %patch3 -p1 -b .reentrant-gethostby
+%patch4 -p1 -b .ppolicy-loglevels
 %patch5 -p1 -b .smbk5pwd-overlay
 %patch6 -p1 -b .ldaprc-currentdir
 %patch7 -p1 -b .userconfig-setgid
@@ -170,8 +184,15 @@ pushd openldap-%{version}
 %endif
 %patch22 -p1 -b .temporary-ssl-thr-init-race
 %patch23 -p1 -b .ITS8240-remove-obsolete-assert
-
-cp %{_datadir}/libtool/config/config.{sub,guess} build/
+%patch24 -p1 -b .remove-slap_writewait_play
+%patch25 -p1 -b .bdb_idl_fetch_key-correct-key-pointer
+%patch26 -p1 -b .ITS8329-back_sql-id_query
+%patch27 -p1 -b .manpages-slapd-conf-TLS
+%patch28 -p1 -b .nss-cipher-attributes
+%patch29 -p1 -b .nss-ciphers-parsing
+%patch30 -p1 -b .nss-ciphers-use-nss-defaults
+%patch31 -p1 -b .nss-ciphers-definitions
+%patch32 -p1 -b .nss-default-breaks-ssf
 
 for subdir in build-servers build-clients ; do
 	mkdir $subdir
@@ -187,6 +208,7 @@ popd
 pushd ltb-project-openldap-ppolicy-check-password-%{check_password_version}
 %patch90 -p1
 %patch91 -p1
+%patch92 -p1
 popd
 
 # setup tree for openldap with evolution-specific patches
@@ -546,6 +568,10 @@ if [ $1 -eq 2 ]; then
 				| xargs -I '{}' $backupcmd '{}' $backupdir
 			cp -af DB_CONFIG $backupdir &>/dev/null
 
+			# show warning
+			echo "Check the following directory for database backup location:"
+			echo "$(pwd)/$backupdir"
+
 			# fix permissions
 			chown -R ldap: $backupdir
 			chmod -R a-w $backupdir
@@ -742,12 +768,37 @@ exit 0
 %attr(0644,root,root)      %{evolution_connector_libdir}/*.a
 
 %changelog
+* Mon Mar 21 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-12
+- fix regression: Including AESGCM ciphers in DEFAULT cipher string breaks SSF (#1300701)
+
+* Tue Mar  8 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-11
+- fix: OpenLDAP doesn't use sane (or default) cipher order (#1300701)
+  + Add support for TLSv1.2, and SHA256 and SHA384 ciphers
+  + Use what NSS considers default for DEFAULT cipher string.
+  + Drop unnecessary hardcoded cipher suites' default flags
+  + Update with TLSv1.2 ciphers
+- revert: check_password minPoints parameter useless (#1255063)
+
+* Wed Jan 20 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-10
+- fix: update description in slapd.conf for NSS database related options (#1131094)
+- fix: check_password minPoints parameter useless (#1255063)
+
+* Wed Jan 20 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-9
+- fix: Bad log levels in check_password module (#1255046)
+- [rfe] add informational message about database backup when openldap is updated (#1261651)
+- fix: id_query option is not available after rebasing openldap to 2.4.39 (#1288545)
+- fix: We can't search expected entries from LDAP server (#1212283)
+
+* Tue Jan 19 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-8
+- fix: slapd crash in do_search (#1257543)
+- Fix: Cannot build the package after libtool rebase (#1296129)
+
 * Tue Sep 29 2015 Matúš Honěk <mhonek@redhat.com> - 2.4.40-7
-- fix: regression: deadlock during SSL_ForceHandshake when getting connection to replica (#1267501)
+- fix: regression: deadlock during SSL_ForceHandshake when getting connection to replica (#1263477)
   + apply (and modify a little) the patch from commit 1eeaeeb7
 
 * Thu Sep 17 2015 Matúš Honěk <mhonek@redhat.com> - 2.4.40-6
-- CVE-2015-6908 openldap: ber_get_next denial of service vulnerability (#1263171)
+- CVE-2015-6908 openldap: ber_get_next denial of service vulnerability (#1263172)
 
 * Thu May 21 2015 Jan Synáček <jsynacek@redhat.com> - 2.4.40-5
 - fix: nslcd segfaults due to incorrect mutex initialization (#1144294)

@@ -1,0 +1,51 @@
+Set some TLS options to have same description as in manpage slapd-config
+
+Author: Matus Honek <mhonek@redhat.com>
+Resolves: #1131094
+
+diff --git a/doc/man/man5/slapd.conf.5 b/doc/man/man5/slapd.conf.5
+--- a/doc/man/man5/slapd.conf.5
++++ b/doc/man/man5/slapd.conf.5
+@@ -1079,17 +1079,13 @@ is in the source code for Mozilla NSS in the file sslinfo.c in the structure
+ Specifies the file that contains certificates for all of the Certificate
+ Authorities that
+ .B slapd
+-will recognize.  The certificate for
+-the CA that signed the server certificate must be included among
+-these certificates. If the signing CA was not a top-level (root) CA,
+-certificates for the entire sequence of CA's from the signing CA to
+-the top-level CA should be present. Multiple certificates are simply
+-appended to the file; the order is not significant.
++will recognize.
+ .TP
+ .B TLSCACertificatePath <path>
+ Specifies the path of a directory that contains Certificate Authority
+ certificates in separate individual files. Usually only one of this
+-or the TLSCACertificateFile is used. This directive is not supported
++or the TLSCACertificateFile is defined. If both are specified, both
++locations will be used. This directive is not supported
+ when using GnuTLS.
+ 
+ When using Mozilla NSS, <path> may contain a Mozilla NSS cert/key
+@@ -1123,8 +1119,11 @@ Specifies the file that contains the
+ .B slapd
+ server private key that matches the certificate stored in the
+ .B TLSCertificateFile
+-file.  Currently, the private key must not be protected with a password, so
+-it is of critical importance that it is protected carefully. 
++file. If the private key is protected with a password, the password must
++be manually typed in when slapd starts.  Usually the private key is not
++protected with a password, to allow slapd to start without manual
++intervention, so
++it is of critical importance that the file is protected carefully. 
+ 
+ When using Mozilla NSS, TLSCertificateKeyFile specifies the name of
+ a file that contains the password for the key for the certificate specified with
+@@ -1137,6 +1136,7 @@ modutil to change the password to the empty string:
+ .fi
+ You must have the old password, if any.  Ignore the WARNING about the running
+ browser.  Press 'Enter' for the new password.
++
+ .TP
+ .B TLSDHParamFile <filename>
+ This directive specifies the file that contains parameters for Diffie-Hellman

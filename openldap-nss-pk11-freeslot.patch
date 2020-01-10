@@ -1,0 +1,16 @@
+Resolves: #929358
+
+Author: Rich Megginson <rmeggins@redhat.com>
+Backported-By: Jan Synacek <jsynacek@redhat.com>
+
+--- openldap-2.4.39/libraries/libldap/tls_m.c	2014-01-25 14:36:15.000000000 +0100
++++ openldap-2.4.39/libraries/libldap/tls_m.c	2014-03-13 09:52:15.392643968 +0100
+@@ -2063,6 +2063,8 @@ tlsm_ctx_free ( tls_ctx *ctx )
+ 				   "TLS: could not close certdb slot - error %d:%s.\n",
+ 				   errcode, PR_ErrorToString( errcode, PR_LANGUAGE_I_DEFAULT ), 0 );
+ 		}
++		PK11_FreeSlot( c->tc_certdb_slot );
++		c->tc_certdb_slot = NULL;
+ 	}
+ 	if ( c->tc_pin_file ) {
+ 		PL_strfree( c->tc_pin_file );

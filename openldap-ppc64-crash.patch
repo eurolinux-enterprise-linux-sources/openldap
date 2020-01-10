@@ -1,0 +1,21 @@
+Resolves: #1202696
+
+--- openldap-2.4.40/libraries/liblmdb/mdb.c	2014-09-19 03:48:49.000000000 +0200
++++ openldap-2.4.40/libraries/liblmdb/mdb.c	2015-03-20 14:52:56.755973126 +0100
+@@ -166,16 +166,7 @@ extern int cacheflush(char *addr, int nb
+ # error "Two's complement, reasonably sized integer types, please"
+ #endif
+ 
+-#ifdef __GNUC__
+-/** Put infrequently used env functions in separate section */
+-# ifdef __APPLE__
+-#  define	ESECT	__attribute__ ((section("__TEXT,text_env")))
+-# else
+-#  define	ESECT	__attribute__ ((section("text_env")))
+-# endif
+-#else
+ #define ESECT
+-#endif
+ 
+ /** @defgroup internal	LMDB Internals
+  *	@{

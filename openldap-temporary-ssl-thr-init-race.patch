@@ -1,0 +1,41 @@
+Temporary patch that fixes a thread initialization race condition when
+using secure connection.
+
+This patch is *not* correct, as the problem only happens when using
+NSS. Either the code in tls_m.c is broken, or the nspr library call
+(PR_CallOnce) doesn't work as expected.
+
+Resolves: #1144294
+
+--- a/libraries/libldap/tls2.c    2014-09-19 03:48:49.000000000 +0200
++++ b/libraries/libldap/tls2.c    2015-05-21 09:32:21.034395985 +0200
+@@ -149,6 +149,9 @@ ldap_pvt_tls_destroy( void )
+ 	tls_imp->ti_tls_destroy();
+ }
+ 
++#ifdef LDAP_R_COMPILE
++static pthread_once_t tlsm_initialized = PTHREAD_ONCE_INIT;
++#endif
+ /*
+  * Initialize a particular TLS implementation.
+  * Called once per implementation.
+@@ -158,6 +161,10 @@ tls_init(tls_impl *impl )
+ {
+ 	static int tls_initialized = 0;
+ 
++#ifdef LDAP_R_COMPILE
++	(void)pthread_once(&tlsm_initialized, impl->ti_thr_init);
++#endif
++
+ 	if ( !tls_initialized++ ) {
+ #ifdef LDAP_R_COMPILE
+ 		ldap_pvt_thread_mutex_init( &tls_def_ctx_mutex );
+@@ -166,9 +173,6 @@ tls_init(tls_impl *impl )
+ 
+ 	if ( impl->ti_inited++ ) return 0;
+ 
+-#ifdef LDAP_R_COMPILE
+-	impl->ti_thr_init();
+-#endif
+ 	return impl->ti_tls_init();
+ }

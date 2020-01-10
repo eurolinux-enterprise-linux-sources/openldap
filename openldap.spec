@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.40
-Release: 12%{?dist}
+Release: 16%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -38,7 +38,6 @@ Patch13: openldap-nss-ignore-certdb-type-prefix.patch
 Patch14: openldap-nss-certs-from-certdb-fallback-pem.patch
 Patch15: openldap-dns-ipv6-queries.patch
 Patch16: openldap-nss-hashed-cacertdir-filename-matching.patch
-Patch18: openldap-nss-update-cipher-list.patch
 Patch19: openldap-tls-reqcert-client-manpage.patch
 Patch20: openldap-support-tlsv1-and-later.patch
 Patch21: openldap-ppc64-crash.patch
@@ -57,6 +56,16 @@ Patch29: openldap-nss-ciphers-parsing.patch
 Patch30: openldap-nss-ciphers-use-nss-defaults.patch
 Patch31: openldap-nss-ciphers-definitions.patch
 Patch32: openldap-nss-default-breaks-ssf.patch
+Patch34: openldap-nss-protocol-version-new-api.patch
+Patch35: openldap-ITS8428-init-sc_writewait.patch
+Patch36: openldap-nss-unregister-on-unload.patch
+# already in upstream (2.4.41), see ITS#8003
+Patch37: openldap-ITS8003-fix-off-by-one-in-LDIF-length.patch
+# already in upstream, see ITS#8337
+Patch38: openldap-ITS8337-fix-missing-olcDbChecksum-config-attr.patch
+
+# upstream ITS#8484
+Patch60: openldap-nss-reregister-nss-shutdown-callback.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
@@ -175,7 +184,6 @@ pushd openldap-%{version}
 %patch14 -p1 -b .nss-certs-from-certdb-fallback-pem
 %patch15 -p1 -b .dns-ipv6-queries
 %patch16 -p1 -b .nss-hashed-cacertdir-filename-matching
-%patch18 -p1 -b .nss-update-cipher-list
 %patch19 -p1 -b .tls-reqcert
 %patch20 -p1 -b .support-tlsv1-and-later
 # XXX: until this is properly fixed, apply on ppc64 only
@@ -193,6 +201,13 @@ pushd openldap-%{version}
 %patch30 -p1 -b .nss-ciphers-use-nss-defaults
 %patch31 -p1 -b .nss-ciphers-definitions
 %patch32 -p1 -b .nss-default-breaks-ssf
+%patch34 -p1 -b .nss-protocol-version-new-api.patch
+%patch35 -p1 -b .ITS8428-init-sc_writewait
+%patch36 -p1 -b .nss-unregister-on-unload
+%patch37 -p1 -b .ITS8003-fix-off-by-one-in-LDIF-length
+%patch38 -p1 -b .ITS8337-fix-missing-olcDbChecksum-config-attr
+
+%patch60 -p1 -b .nss-reregister-nss-shutdown-callback
 
 for subdir in build-servers build-clients ; do
 	mkdir $subdir
@@ -601,7 +616,7 @@ if ! ls -d %{_sysconfdir}/openldap/slapd.d/* &>/dev/null; then
 		slaptest -f %{_datadir}/openldap-servers/slapd.conf.obsolete -F %{_sysconfdir}/openldap/slapd.d &>/dev/null
 		chown -R ldap:ldap %{_sysconfdir}/openldap/slapd.d
 		chmod -R 000 %{_sysconfdir}/openldap/slapd.d
-		chmod -R u+rwX %{_sysconfdir}/openldap/slapd.d
+		chmod -R u+rwX,g+rX %{_sysconfdir}/openldap/slapd.d
 		rm -f %{_sharedstatedir}/ldap/__db* %{_sharedstatedir}/ldap/alock
 	fi
 fi
@@ -768,6 +783,29 @@ exit 0
 %attr(0644,root,root)      %{evolution_connector_libdir}/*.a
 
 %changelog
+* Tue Dec  6 2016 Matus Honek <mhonek@redhat.com> - 2.4.40-16
+- NSS: re-register NSS_Shutdown callback (#1071520)
+
+* Wed Nov 30 2016 Matus Honek <mhonek@redhat.com> - 2.4.40-15
+- ITS#8337 fix missing olcDbChecksum config attr (#1397961)
+- ITS#8003 fix off-by-one in LDIF length (#1397949)
+
+* Tue Nov  8 2016 Matus Honek <mhonek@redhat.com> - 2.4.40-14
+- NSS: use a hex number for some ciphersuite definitions (#1372357)
+- NSS: fix OpenLDAP crash in NSS shutdown handling (#1373222)
+- fix: rpm -V openldap-servers complains after a clean install (#1263220)
+
+* Tue Nov  1 2016 Matus Honek <mhonek@redhat.com> - 2.4.40-13
+- NSS: fix setting olcTLSProtocolMin (#1249092)
+- fix slapd crash in do_search (sc_writewait) (#1340861)
+- NSS: fix parsing code (#1372349)
+  + refactor ciphers-related patches
+  + fix cipherstring parsing
+- NSS: fix cipher suites' definitions (#1372357)
+  + fix some ciphers' flags
+  + add new ciphers to match the current NSS
+  + add PSK and CHACHA20POLY1305 cipher strings
+
 * Mon Mar 21 2016 Matúš Honěk <mhonek@redhat.com> - 2.4.40-12
 - fix regression: Including AESGCM ciphers in DEFAULT cipher string breaks SSF (#1300701)
 

@@ -1,0 +1,21 @@
+commit 901fe3318f1c4ea7adac45f906d5447d71e43f8a
+Author: Howard Chu <hyc@openldap.org>
+Date:   Sat Dec 12 16:14:02 2015 +0000
+
+    ITS#8337 fix missing olcDbChecksum config attr
+
+diff --git a/servers/slapd/back-bdb/config.c b/servers/slapd/back-bdb/config.c
+index e07381f..a5b5888 100644
+--- a/servers/slapd/back-bdb/config.c
++++ b/servers/slapd/back-bdb/config.c
+@@ -163,8 +163,8 @@ static ConfigOCs bdbocs[] = {
+ #endif
+ 		"SUP olcDatabaseConfig "
+ 		"MUST olcDbDirectory "
+-		"MAY ( olcDbCacheSize $ olcDbCheckpoint $ olcDbConfig $ "
+-		"olcDbCryptFile $ olcDbCryptKey $ "
++		"MAY ( olcDbCacheSize $ olcDbCheckpoint $ olcDbChecksum $ "
++		"olcDbConfig $ olcDbCryptFile $ olcDbCryptKey $ "
+ 		"olcDbNoSync $ olcDbDirtyRead $ olcDbIDLcacheSize $ "
+ 		"olcDbIndex $ olcDbLinearIndex $ olcDbLockDetect $ "
+ 		"olcDbMode $ olcDbSearchStack $ olcDbShmKey $ "

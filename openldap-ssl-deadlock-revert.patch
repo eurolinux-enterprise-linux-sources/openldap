@@ -1,0 +1,49 @@
+--- a/libraries/libldap/tls_m.c	2013-11-04 15:34:44.830105497 +0100
++++ b/libraries/libldap/tls_m.c	2013-11-04 15:44:46.570911435 +0100
+@@ -145,7 +145,6 @@ static int tlsm_init( void );
+ */
+ static ldap_pvt_thread_mutex_t tlsm_ctx_count_mutex;
+ static ldap_pvt_thread_mutex_t tlsm_init_mutex;
+-static ldap_pvt_thread_mutex_t tlsm_pem_mutex;
+ static PRCallOnceType tlsm_init_mutex_callonce = {0,0};
+ 
+ static PRStatus PR_CALLBACK
+@@ -163,12 +162,6 @@ tlsm_thr_init_callonce( void )
+ 		return PR_FAILURE;
+ 	}
+ 
+-	if ( ldap_pvt_thread_mutex_init( &tlsm_pem_mutex ) ) {
+-		Debug( LDAP_DEBUG_ANY,
+-			   "TLS: could not create mutex for PEM module: %d\n", errno, 0, 0 );
+-		return PR_FAILURE;
+-	}
+-
+ 	return PR_SUCCESS;
+ }
+ 
+@@ -2018,7 +2011,6 @@ tlsm_destroy( void )
+ #ifdef LDAP_R_COMPILE
+ 	ldap_pvt_thread_mutex_destroy( &tlsm_ctx_count_mutex );
+ 	ldap_pvt_thread_mutex_destroy( &tlsm_init_mutex );
+-	ldap_pvt_thread_mutex_destroy( &tlsm_pem_mutex );
+ #endif
+ }
+ 
+@@ -2666,16 +2658,9 @@ static int
+ tlsm_session_accept_or_connect( tls_session *session, int is_accept )
+ {
+ 	tlsm_session *s = (tlsm_session *)session;
+-	int rc;
++	int rc = SSL_ForceHandshake( s );
+ 	const char *op = is_accept ? "accept" : "connect";
+ 
+-	if ( pem_module ) {
+-		LDAP_MUTEX_LOCK( &tlsm_pem_mutex );
+-	}
+-	rc = SSL_ForceHandshake( s );
+-	if ( pem_module ) {
+-		LDAP_MUTEX_UNLOCK( &tlsm_pem_mutex );
+-	}
+ 	if ( rc ) {
+ 		PRErrorCode err = PR_GetError();
+ 		rc = -1;

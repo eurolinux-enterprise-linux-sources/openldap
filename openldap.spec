@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.40
-Release: 6%{?dist}
+Release: 7%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -29,6 +29,7 @@ Patch3: openldap-reentrant-gethostby.patch
 Patch5: openldap-smbk5pwd-overlay.patch
 Patch6: openldap-ldaprc-currentdir.patch
 Patch7: openldap-userconfig-setgid.patch
+Patch8: openldap-ssl-deadlock-revert.patch
 Patch9: openldap-man-sasl-nocanon.patch
 Patch10: openldap-memberof-disallow-global.patch
 Patch12: openldap-nss-pk11-freeslot.patch
@@ -152,6 +153,7 @@ pushd openldap-%{version}
 %patch5 -p1 -b .smbk5pwd-overlay
 %patch6 -p1 -b .ldaprc-currentdir
 %patch7 -p1 -b .userconfig-setgid
+%patch8 -p1 -b .ssl-deadlock-revert
 %patch9 -p1 -b .man-sasl-nocanon
 %patch10 -p1 -b .memberof-disallow-global
 %patch12 -p1 -b .nss-leak
@@ -740,6 +742,10 @@ exit 0
 %attr(0644,root,root)      %{evolution_connector_libdir}/*.a
 
 %changelog
+* Tue Sep 29 2015 Matúš Honěk <mhonek@redhat.com> - 2.4.40-7
+- fix: regression: deadlock during SSL_ForceHandshake when getting connection to replica (#1267501)
+  + apply (and modify a little) the patch from commit 1eeaeeb7
+
 * Thu Sep 17 2015 Matúš Honěk <mhonek@redhat.com> - 2.4.40-6
 - CVE-2015-6908 openldap: ber_get_next denial of service vulnerability (#1263171)
 

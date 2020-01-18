@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.44
-Release: 20%{?dist}
+Release: 21%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -16,6 +16,7 @@ Source2: slapd.sysconfig
 Source3: slapd.tmpfiles
 Source4: slapd.ldif
 Source5: ldap.conf
+Source6: openldap.tmpfiles
 Source10: ltb-project-openldap-ppolicy-check-password-%{check_password_version}.tar.gz
 Source50: libexec-functions
 Source51: libexec-convert-config.sh
@@ -334,6 +335,7 @@ install -m 0755 -d %{buildroot}%{_localstatedir}/run/openldap
 # setup autocreation of runtime directories on tmpfs
 mkdir -p %{buildroot}%{_tmpfilesdir}/
 install -m 0644 %SOURCE3 %{buildroot}%{_tmpfilesdir}/slapd.conf
+install -m 0644 %SOURCE6 %{buildroot}%{_tmpfilesdir}/openldap.conf
 
 # install default ldap.conf (customized)
 rm -f %{buildroot}%{_sysconfdir}/openldap/ldap.conf
@@ -580,6 +582,7 @@ exit 0
 %dir %{_sysconfdir}/openldap
 %dir %{_sysconfdir}/openldap/certs
 %config(noreplace) %{_sysconfdir}/openldap/ldap.conf
+%config(noreplace) %{_tmpfilesdir}/openldap.conf
 %dir %{_libexecdir}/openldap/
 %{_libexecdir}/openldap/create-certdb.sh
 %{_libdir}/liblber-2.4*.so.*
@@ -672,6 +675,9 @@ exit 0
 %{_mandir}/man3/*
 
 %changelog
+* Tue Dec 18 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-21
+- MozNSS Compat. Layer: Protect /tmp/openldap-tlsmc-* files (#1590184)
+
 * Tue Aug 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-20
 - Backport upstream fixes for ITS 7595 - add OpenSSL EC support (#1584922)
 

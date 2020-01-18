@@ -1,0 +1,39 @@
+fix: OpenLDAP crash in NSS shutdown handling
+
+Resolves: #1158005
+Related: #1231228 #1249977
+Author: Jan Synacek <jsynacek@redhat.com>
+Modified-By: Matus Honek <mhonek@redhat.com>
+
+--- a/libraries/libldap/init.c
++++ b/libraries/libldap/init.c
+@@ -473,7 +473,7 @@ static void openldap_ldap_init_w_env(
+  * Sorry, don't know how to handle this for non-GCC environments.
+  */
+ static void ldap_int_destroy_global_options(void)
+-	__attribute__ ((destructor));
++	__attribute__ ((destructor (2)));
+ #endif
+ 
+ static void
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -1931,6 +1931,18 @@ tlsm_clientauth_init( tlsm_ctx *ctx )
+ 	return ( status == SECSuccess ? 0 : -1 );
+ }
+ 
++#if defined(__GNUC__)
++static void
++tlsm_destroy_on_unload(void) __attribute__ ((destructor (1)));
++
++static void
++tlsm_destroy_on_unload(void)
++{
++	if (NSS_IsInitialized())
++		NSS_UnregisterShutdown(tlsm_nss_shutdown_cb, NULL);
++}
++#endif
++
+ /*
+  * Tear down the TLS subsystem. Should only be called once.
+  */

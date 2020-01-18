@@ -1,0 +1,242 @@
+fix: openldap ciphersuite parsing code handles masks incorrectly
+
+Author: Matus Honek <mhonek@redhat.com>
+Original-Author: Martin Poole <mpoole@redhat.com>
+Resolves: #1231522
+Related: #1238322
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -215,7 +215,6 @@ typedef struct {
+ /* cipher attributes  */
+ #define SSL_kRSA        0x00000001L
+ #define SSL_aRSA        0x00000002L
+-#define SSL_RSA         (SSL_kRSA|SSL_aRSA)
+ #define SSL_aDSA        0x00000004L
+ #define SSL_DSA         SSL_aDSA
+ #define SSL_eNULL       0x00000008L
+@@ -225,19 +224,27 @@ typedef struct {
+ #define SSL_RC2         0x00000080L
+ #define SSL_AES128      0x00000100L
+ #define SSL_AES256      0x00000200L
+-#define SSL_AES         (SSL_AES128|SSL_AES256)
+ #define SSL_MD5         0x00000400L
+ #define SSL_SHA1        0x00000800L
+ #define SSL_kEDH        0x00001000L
+ #define SSL_CAMELLIA128 0x00002000L
+ #define SSL_CAMELLIA256 0x00004000L
+-#define SSL_CAMELLIA    (SSL_CAMELLIA128|SSL_CAMELLIA256)
+ #define SSL_SEED        0x00008000L
+ #define SSL_kECDH       0x00010000L
+ #define SSL_kECDHE      0x00020000L
+ #define SSL_aECDSA      0x00040000L
+ #define SSL_SHA256	0x00080000L
+ #define SSL_SHA384	0x00100000L
++#define SSL_kEECDH  0x00200000L
++#define SSL_AESGCM  0x00400000L
++#define SSL_AEAD    0x00800000L
++#define SSL_CHACHA20POLY1305 0x02000000L
++
++/* cipher attributes non-unique - do not use for definitions */
++#define SSL_RSA         0x00000001L
++#define SSL_AES         0x00000002L
++#define SSL_CAMELLIA    0x00000004L
++#define SSL_ECDH        0x00000008L
+ 
+ /* cipher strength */
+ #define SSL_NULL      0x00000001L
+@@ -247,6 +253,9 @@ typedef struct {
+ #define SSL_MEDIUM    0x00000010L
+ #define SSL_HIGH      0x00000020L
+ 
++/* cipher strengths non-unique - do not use for definitions */
++#define SSL_EXPORT    0x00000001L
++
+ #define SSL2  0x00000001L
+ #define SSL3  0x00000002L
+ /* OpenSSL treats SSL3 and TLSv1 the same */
+@@ -609,10 +618,12 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 		while ((*cipher) && (isspace(*cipher)))
+ 			++cipher;
+ 
+-		action = 1;
+ 		switch(*cipher) {
+-		case '+': /* Add something */
+-			action = 1;
++		case '+': /* Do nothig. NSS does not support ordering. */
++			Debug( LDAP_DEBUG_ARGS,
++			       "TLS: warning: parsing cipher string: ordering is not supported by NSS.\n",
++			       0, 0, 0 );
++			action = 2;
+ 			cipher++;
+ 			break;
+ 		case '-': /* Subtract something */
+@@ -623,8 +634,8 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 			action = -1;
+ 			cipher++;
+ 			break;
+-		default:
+-			/* do nothing */
++		default: /* Add something */
++			action = 1;
+ 			break;
+ 		}
+ 
+@@ -654,7 +665,10 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 			}
+ 		} else {
+ 			int mask = 0;
++			int multi_mask = 0;
++			int negative_mask = 0;
+ 			int strength = 0;
++			int multi_strength = 0;
+ 			int protocol = 0;
+ 			char *c;
+ 
+@@ -665,16 +678,21 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					*c++ = '\0';
+ 				}
+ 
+-				if (!strcmp(cipher, "RSA")) {
+-					mask |= SSL_RSA;
++				if ((!strcmp(cipher, "RSA")) || (!strcmp(cipher, "kRSA"))) {
++					mask |= SSL_kRSA;
++				} else if (!strcmp(cipher, "aRSA")) {
++					mask |= SSL_aRSA;
++					negative_mask |= SSL_kECDH;
+ 				} else if ((!strcmp(cipher, "NULL")) || (!strcmp(cipher, "eNULL"))) {
+ 					mask |= SSL_eNULL;
+ 				} else if (!strcmp(cipher, "AES128")) {
+ 					mask |= SSL_AES128;
+ 				} else if (!strcmp(cipher, "AES256")) {
+ 					mask |= SSL_AES256;
++				} else if (!strcmp(cipher, "AESGCM")) {
++					mask |= SSL_AESGCM;
+ 				} else if (!strcmp(cipher, "AES")) {
+-					mask |= SSL_AES;
++					multi_mask |= SSL_AES;
+ 				} else if (!strcmp(cipher, "3DES")) {
+ 					mask |= SSL_3DES;
+ 				} else if (!strcmp(cipher, "DES")) {
+@@ -685,28 +705,45 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					mask |= SSL_RC2;
+ 				} else if (!strcmp(cipher, "MD5")) {
+ 					mask |= SSL_MD5;
+-				} else if ((!strcmp(cipher, "SHA")) || (!strcmp(cipher, "SHA1"))) {
+-					mask |= SSL_SHA1;
+ 				} else if (!strcmp(cipher, "SHA256")) {
+ 					mask |= SSL_SHA256;
++				} else if (!strcmp(cipher, "SHA384")) {
++					mask |= SSL_SHA384;
++				} else if ((!strcmp(cipher, "SHA")) || (!strcmp(cipher, "SHA1"))) {
++					mask |= SSL_SHA1;
+-				} else if (!strcmp(cipher, "EDH")) {
++				} else if ((!strcmp(cipher, "EDH")) || (!strcmp(cipher, "DH"))) {
+ 					mask |= SSL_kEDH;
+-				} else if (!strcmp(cipher, "DSS")) {
++				} else if ((!strcmp(cipher, "DSS")) || (!strcmp(cipher, "aDSS"))) {
+ 					mask |= SSL_aDSA;
+ 				} else if (!strcmp(cipher, "CAMELLIA128")) {
+ 					mask |= SSL_CAMELLIA128;
+ 				} else if (!strcmp(cipher, "CAMELLIA256")) {
+ 					mask |= SSL_CAMELLIA256;
+ 				} else if (!strcmp(cipher, "CAMELLIA")) {
+-					mask |= SSL_CAMELLIA;
++					multi_mask |= SSL_CAMELLIA;
+ 				} else if (!strcmp(cipher, "SEED")) {
+ 					mask |= SSL_SEED;
+-				} else if (!strcmp(cipher, "ECDH")) {
++				} else if (!strcmp(cipher, "kECDHe")) {
++					mask |= SSL_kECDH|SSL_aECDSA;
++				} else if (!strcmp(cipher, "kECDHr")) {
++					mask |= SSL_kECDH|SSL_aRSA;
++				} else if (!strcmp(cipher, "kECDH")) {
++					mask |= SSL_kECDH;
++				} else if (!strcmp(cipher, "aECDH")) {
+ 					mask |= SSL_kECDH;
++				} else if (!strcmp(cipher, "EECDH")) {
++					mask |= SSL_kECDHE;
++				} else if (!strcmp(cipher, "kEECDH")) {
++					mask |= SSL_kECDHE;
+ 				} else if (!strcmp(cipher, "ECDHE")) {
+ 					mask |= SSL_kECDHE;
+-				} else if (!strcmp(cipher, "ECDSA")) {
++				} else if (!strcmp(cipher, "ECDH")) {
++					multi_mask |= SSL_ECDH;
++				} else if ((!strcmp(cipher, "ECDSA")) || (!strcmp(cipher, "aECDSA"))) {
+ 					mask |= SSL_aECDSA;
++					negative_mask |= SSL_kECDH;
++				} else if (!strcmp(cipher, "CHACHA20POLY1305")) {
++					mask |= SSL_CHACHA20POLY1305;
+ 				} else if (!strcmp(cipher, "SSLv2")) {
+ 					protocol |= SSL2;
+ 				} else if (!strcmp(cipher, "SSLv3")) {
+@@ -721,12 +756,12 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 					strength |= SSL_MEDIUM;
+ 				} else if (!strcmp(cipher, "LOW")) {
+ 					strength |= SSL_LOW;
+-				} else if ((!strcmp(cipher, "EXPORT")) || (!strcmp(cipher, "EXP"))) {
+-					strength |= SSL_EXPORT40|SSL_EXPORT56;
+ 				} else if (!strcmp(cipher, "EXPORT40")) {
+ 					strength |= SSL_EXPORT40;
+ 				} else if (!strcmp(cipher, "EXPORT56")) {
+ 					strength |= SSL_EXPORT56;
++				} else if ((!strcmp(cipher, "EXPORT")) || (!strcmp(cipher, "EXP"))) {
++					multi_strength |= SSL_EXPORT;
+ 				}
+ 
+ 				if (c)
+@@ -734,23 +769,39 @@ nss_parse_ciphers(const char *cipherstr, int cipher_list[ciphernum])
+ 
+ 			} /* while */
+ 
++			/* NSS does not support ordering */
++			if (action == 2)
++			  continue;
++
+ 			/* If we have a mask, apply it. If not then perhaps they provided
+ 			 * a specific cipher to enable.
++			 * if more than one mask is provided then AND logic applies (to match openssl)
+ 			 */
+-			if (mask || strength || protocol) {
++			if (mask || negative_mask || multi_mask || strength || multi_strength || protocol) {
+ 				for (i=0; i<ciphernum; i++) {
+-					if (((ciphers_def[i].attr & mask) ||
+-						 (ciphers_def[i].strength & strength) ||
+-						 (ciphers_def[i].version & protocol)) &&
+-						(cipher_list[i] != -1)) {
+-						/* Enable the NULL ciphers only if explicity
+-						 * requested */
+-						if (ciphers_def[i].attr & SSL_eNULL) {
+-							if (mask & SSL_eNULL)
+-								cipher_list[i] = action;
+-						} else
+-							cipher_list[i] = action;
+-					}
++					if ( cipher_list[i] == -1 )
++						continue;
++					if ( mask != (ciphers_def[i].attr & mask) )
++						continue;
++					if ( strength != (ciphers_def[i].strength & strength) )
++						continue;
++					if ( protocol != (ciphers_def[i].version & protocol) )
++						continue;
++					if ((multi_mask & SSL_AES) &&
++					    !(ciphers_def[i].attr & (SSL_AES128|SSL_AES256|SSL_AESGCM)))
++						continue;
++					if ((multi_mask & SSL_ECDH) &&
++					    !(ciphers_def[i].attr & (SSL_kECDH|SSL_kECDHE)))
++						continue;
++					if ((multi_mask & SSL_CAMELLIA) &&
++					    !(ciphers_def[i].attr & (SSL_CAMELLIA128|SSL_CAMELLIA256)))
++						continue;
++					if ((multi_strength & SSL_EXPORT) &&
++					    !(ciphers_def[i].strength & (SSL_EXPORT40|SSL_EXPORT56)))
++						continue;
++					if ( negative_mask & ciphers_def[i].attr )
++						continue;
++					cipher_list[i] = action;
+ 				}
+ 			} else {
+ 				for (i=0; i<ciphernum; i++) {

@@ -36,8 +36,6 @@ function parse_config_options()
 		esac
 	done
 
-	unset OPTIND
-
 	if [ -n "$user" ]; then
 		SLAPD_USER="$user"
 	fi

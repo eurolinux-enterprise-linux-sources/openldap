@@ -1,0 +1,50 @@
+NSS: re-register NSS_Shutdown callback
+
+Original upstream comment:
+"""
+When there's a persistent daemon for auth and it sets LDAP_OPT_X_TLS_NEWCTX, it
+fails to auth at third login.
+
+1. everything is good and destroyed after use but
+tlsm_register_shutdown_callonce.initialized=1.
+2. still good but because tlsm_register_shutdown_callonce.initialized==1, it
+fails to register shutdown function.
+   so pem_module is not destroyed at the end.
+3. pem_module is not NULL so it's not initialized again and not added to modules
+list. And Login fails.
+"""
+
+Sent-By: soohoon.lee@f5.com
+Original-Name: soohoon-lee-160823.patch
+Upstream-ITS: 8484
+
+diff --git a/libraries/libldap/tls_m.c b/libraries/libldap/tls_m.c
+index cdf7f8e..cf05914 100644
+--- a/libraries/libldap/tls_m.c
++++ b/libraries/libldap/tls_m.c
+@@ -1145,6 +1145,8 @@ tlsm_auth_cert_handler(void *arg, PRFileDesc *fd,
+ 	return ret;
+ }
+ 
++static PRCallOnceType tlsm_register_shutdown_callonce = {0,0};
++
+ static SECStatus
+ tlsm_nss_shutdown_cb( void *appData, void *nssData )
+ {
+@@ -1157,10 +1159,15 @@ tlsm_nss_shutdown_cb( void *appData, void *nssData )
+ 		SECMOD_DestroyModule( pem_module );
+ 		pem_module = NULL;
+ 	}
++
++	/* init callonce so it can be armed again for cases like persistent daemon with LDAP_OPT_X_TLS_NEWCTX */
++	tlsm_register_shutdown_callonce.initialized = 0;
++	tlsm_register_shutdown_callonce.inProgress = 0;
++	tlsm_register_shutdown_callonce.status = 0;
++
+ 	return rc;
+ }
+ 
+-static PRCallOnceType tlsm_register_shutdown_callonce = {0,0};
+ static PRStatus PR_CALLBACK
+ tlsm_register_nss_shutdown_cb( void )
+ {

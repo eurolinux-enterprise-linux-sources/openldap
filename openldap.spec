@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.44
-Release: 21%{?dist}
+Release: 5%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -16,7 +16,6 @@ Source2: slapd.sysconfig
 Source3: slapd.tmpfiles
 Source4: slapd.ldif
 Source5: ldap.conf
-Source6: openldap.tmpfiles
 Source10: ltb-project-openldap-ppolicy-check-password-%{check_password_version}.tar.gz
 Source50: libexec-functions
 Source51: libexec-convert-config.sh
@@ -24,7 +23,6 @@ Source52: libexec-check-config.sh
 Source53: libexec-upgrade-db.sh
 Source54: libexec-create-certdb.sh
 Source55: libexec-generate-server-cert.sh
-Source56: libexec-update-ppolicy-schema.sh
 
 # patches for 2.4
 Patch0: openldap-manpages.patch
@@ -38,6 +36,14 @@ Patch7: openldap-allop-overlay.patch
 Patch8: openldap-syncrepl-unset-tls-options.patch
 Patch9: openldap-man-sasl-nocanon.patch
 Patch10: openldap-ai-addrconfig.patch
+Patch11: openldap-nss-update-list-of-ciphers.patch
+Patch12: openldap-tls-no-reuse-of-tls_session.patch
+Patch13: openldap-nss-regex-search-hashed-cacert-dir.patch
+Patch14: openldap-nss-ignore-certdb-type-prefix.patch
+Patch15: openldap-nss-certs-from-certdb-fallback-pem.patch
+Patch16: openldap-nss-pk11-freeslot.patch
+Patch17: openldap-nss-unregister-on-unload.patch
+Patch18: openldap-ssl-deadlock-revert.patch
 # fix back_perl problems with lt_dlopen()
 # might cause crashes because of symbol collisions
 # the proper fix is to link all perl modules against libperl
@@ -47,33 +53,36 @@ Patch19: openldap-switch-to-lt_dlopenadvise-to-get-RTLD_GLOBAL-set.patch
 Patch20: openldap-ldapi-sasl.patch
 # coverity - missin_unlock in servers/slapd/overlays/accesslog.c
 Patch21: openldap-missing-unlock-in-accesslog-overlay.patch
+# upstreamed, ITS #7979
+Patch22: openldap-support-tlsv1-and-later.patch
 Patch23: openldap-module-passwd-sha2.patch
 # pending upstream inclusion, ITS #7744
 Patch24: openldap-man-tls-reqcert.patch
-Patch25: openldap-man-ldap-conf.patch
+Patch27: openldap-nss-ciphersuite-handle-masks-correctly.patch
+Patch28: openldap-nss-ciphers-use-nss-defaults.patch
+# this is a temporary fix for #1294385, it should be solved properly, backported from #1144294
+Patch30: openldap-temporary-ssl-thr-init-race.patch
+Patch34: openldap-nss-protocol-version-new-api.patch
 Patch35: openldap-ITS8428-init-sc_writewait.patch
 Patch36: openldap-bdb_idl_fetch_key-correct-key-pointer.patch
 Patch37: openldap-ITS8655-fix-double-free-on-paged-search-with-pagesize-0.patch
-Patch38: openldap-ITS8720-back-ldap-starttls-timeout.patch
 
-# fixes for DH and ECDH
-Patch50: openldap-openssl-its7506-fix-DH-params-1.patch
-Patch51: openldap-openssl-its7506-fix-DH-params-2.patch
-Patch52: openldap-openssl-ITS7595-Add-EC-support-1.patch
-Patch53: openldap-openssl-ITS7595-Add-EC-support-2.patch
+# upstream ITS#8484
+Patch60: openldap-nss-reregister-nss-shutdown-callback.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
 Patch91: check-password.patch
 Patch92: check-password-loglevels.patch
 
-# MozNSS compatibility layer
-Patch101: openldap-tlsmc.patch
 # Fedora specific patches
+Patch100: openldap-autoconf-pkgconfig-nss.patch
 Patch102: openldap-fedora-systemd.patch
 
-BuildRequires: cyrus-sasl-devel, nss-devel, openssl-devel, krb5-devel, tcp_wrappers-devel, unixODBC-devel
+BuildRequires: cyrus-sasl-devel, nss-devel, krb5-devel, tcp_wrappers-devel, unixODBC-devel
 BuildRequires: glibc-devel, libtool, libtool-ltdl-devel, groff, perl, perl-devel, perl(ExtUtils::Embed)
+# smbk5pwd overlay:
+BuildRequires: openssl-devel
 Requires: nss-tools
 Requires(post): rpm, coreutils, findutils
 
@@ -155,7 +164,8 @@ programs needed for accessing and modifying OpenLDAP directories.
 
 pushd openldap-%{version}
 
-%patch101 -p1
+# use pkg-config for Mozilla NSS library
+%patch100 -p1
 
 # alternative include paths for Mozilla NSS
 ln -s %{_includedir}/nss3 include/nss
@@ -174,20 +184,28 @@ AUTOMAKE=%{_bindir}/true autoreconf -fi
 %patch8 -p1
 %patch9 -p1
 %patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
 %patch19 -p1
 %patch20 -p1
 %patch21 -p1
+%patch22 -p1
 %patch23 -p1
 %patch24 -p1
-%patch25 -p1
+%patch27 -p1
+%patch28 -p1
+%patch30 -p1
+%patch34 -p1
 %patch35 -p1
 %patch36 -p1
 %patch37 -p1
-%patch38 -p1
-%patch50 -p1
-%patch51 -p1
-%patch52 -p1
-%patch53 -p1
+%patch60 -p1
 
 %patch102 -p1
 
@@ -230,7 +248,7 @@ popd
 export LDFLAGS="-pie"
 # avoid stray dependencies (linker flag --as-needed)
 # enable experimental support for LDAP over UDP (LDAP_CONNECTIONLESS)
-export CFLAGS="${CFLAGS} %{optflags} -Wl,-z,relro,-z,now,--as-needed -DLDAP_CONNECTIONLESS -DLDAP_USE_NON_BLOCKING_TLS"
+export CFLAGS="${CFLAGS} %{optflags} -Wl,-z,relro,-z,now,--as-needed -DLDAP_CONNECTIONLESS"
 
 pushd openldap-%{version}
 %configure \
@@ -267,12 +285,11 @@ pushd openldap-%{version}
 	--disable-static \
 	--enable-shared \
 	\
-	--enable-moznss-compatibility=yes \
-	\
 	--with-cyrus-sasl \
 	--without-fetch \
 	--with-threads \
 	--with-pic \
+	--with-tls=moznss \
 	--with-gnu-ld \
 	\
 	--libexecdir=%{_libdir}
@@ -335,7 +352,6 @@ install -m 0755 -d %{buildroot}%{_localstatedir}/run/openldap
 # setup autocreation of runtime directories on tmpfs
 mkdir -p %{buildroot}%{_tmpfilesdir}/
 install -m 0644 %SOURCE3 %{buildroot}%{_tmpfilesdir}/slapd.conf
-install -m 0644 %SOURCE6 %{buildroot}%{_tmpfilesdir}/openldap.conf
 
 # install default ldap.conf (customized)
 rm -f %{buildroot}%{_sysconfdir}/openldap/ldap.conf
@@ -350,7 +366,6 @@ install -m 0755 %SOURCE52 %{buildroot}%{_libexecdir}/openldap/check-config.sh
 install -m 0755 %SOURCE53 %{buildroot}%{_libexecdir}/openldap/upgrade-db.sh
 install -m 0755 %SOURCE54 %{buildroot}%{_libexecdir}/openldap/create-certdb.sh
 install -m 0755 %SOURCE55 %{buildroot}%{_libexecdir}/openldap/generate-server-cert.sh
-install -m 0755 %SOURCE56 %{buildroot}%{_libexecdir}/openldap/update-ppolicy-schema.sh
 
 # install mdb_* tools
 mv %{buildroot}/usr/local/bin/mdb_{copy,dump,load,stat} %{buildroot}%{_libexecdir}/openldap/
@@ -475,36 +490,28 @@ if [ -f %{_sharedstatedir}/ldap/rpm_upgrade_openldap ]; then
 	rm -f %{_sharedstatedir}/ldap/rpm_upgrade_openldap
 fi
 
-# ensure ppolicy schema updated (bug #1487857)
-if [ $1 -eq 2 ]; then
-	if [ -f %{_sysconfdir}/openldap/slapd.d/cn=config.ldif ]; then
-		%{_libexecdir}/openldap/update-ppolicy-schema.sh &>/dev/null
-	fi
-fi
-
 # conversion from /etc/sysconfig/ldap to /etc/sysconfig/slapd
 if [ $1 -eq 2 ]; then
 	# we expect that 'ldap' will be renamed to 'ldap.rpmsave' after removing the old package
-	if [ -r %{_sysconfdir}/sysconfig/ldap ]; then
-		source %{_sysconfdir}/sysconfig/ldap &>/dev/null
+	[ -r %{_sysconfdir}/sysconfig/ldap ] || exit 0
+	source %{_sysconfdir}/sysconfig/ldap &>/dev/null
 
-		new_urls=
-		[ "$SLAPD_LDAP" != "no" ]   && new_urls="$new_urls ldap:///"
-		[ "$SLAPD_LDAPI" != "no" ]  && new_urls="$new_urls ldapi:///"
-		[ "$SLAPD_LDAPS" == "yes" ] && new_urls="$new_urls ldaps:///"
-		[ -n "$SLAPD_URLS" ]        && new_urls="$new_urls $SLAPD_URLS"
+	new_urls=
+	[ "$SLAPD_LDAP" != "no" ]   && new_urls="$new_urls ldap:///"
+	[ "$SLAPD_LDAPI" != "no" ]  && new_urls="$new_urls ldapi:///"
+	[ "$SLAPD_LDAPS" == "yes" ] && new_urls="$new_urls ldaps:///"
+	[ -n "$SLAPD_URLS" ]        && new_urls="$new_urls $SLAPD_URLS"
 
-		failure=0
-		cp -f %{_sysconfdir}/sysconfig/slapd %{_sysconfdir}/sysconfig/slapd.rpmconvert
-		sed -i '/^#\?SLAPD_URLS=/s@.*@SLAPD_URLS="'"$new_urls"'"@' %{_sysconfdir}/sysconfig/slapd.rpmconvert &>/dev/null || failure=1
-		[ -n "$SLAPD_OPTIONS" ] && \
-			sed -i '/^#\?SLAPD_OPTIONS=/s@.*$@SLAPD_OPTIONS="'"$SLAPD_OPTIONS"'"@' %{_sysconfdir}/sysconfig/slapd.rpmconvert &>/dev/null || failure=1
+	failure=0
+	cp -f %{_sysconfdir}/sysconfig/slapd %{_sysconfdir}/sysconfig/slapd.rpmconvert
+	sed -i '/^#\?SLAPD_URLS=/s@.*@SLAPD_URLS="'"$new_urls"'"@' %{_sysconfdir}/sysconfig/slapd.rpmconvert &>/dev/null || failure=1
+	[ -n "$SLAPD_OPTIONS" ] && \
+		sed -i '/^#\?SLAPD_OPTIONS=/s@.*$@SLAPD_OPTIONS="'"$SLAPD_OPTIONS"'"@' %{_sysconfdir}/sysconfig/slapd.rpmconvert &>/dev/null || failure=1
 
-		if [ $failure -eq 0 ]; then
-			mv -f %{_sysconfdir}/sysconfig/slapd.rpmconvert %{_sysconfdir}/sysconfig/slapd
-		else
-			rm -f %{_sysconfdir}/sysconfig/slapd.rpmconvert
-		fi
+	if [ $failure -eq 0 ]; then
+		mv -f %{_sysconfdir}/sysconfig/slapd.rpmconvert %{_sysconfdir}/sysconfig/slapd
+	else
+		rm -f %{_sysconfdir}/sysconfig/slapd.rpmconvert
 	fi
 fi
 
@@ -582,7 +589,6 @@ exit 0
 %dir %{_sysconfdir}/openldap
 %dir %{_sysconfdir}/openldap/certs
 %config(noreplace) %{_sysconfdir}/openldap/ldap.conf
-%config(noreplace) %{_tmpfilesdir}/openldap.conf
 %dir %{_libexecdir}/openldap/
 %{_libexecdir}/openldap/create-certdb.sh
 %{_libdir}/liblber-2.4*.so.*
@@ -648,7 +654,6 @@ exit 0
 %{_libexecdir}/openldap/check-config.sh
 %{_libexecdir}/openldap/upgrade-db.sh
 %{_libexecdir}/openldap/generate-server-cert.sh
-%{_libexecdir}/openldap/update-ppolicy-schema.sh
 %{_libexecdir}/openldap/mdb_*
 %{_libexecdir}/openldap/man/man1/mdb_*
 %{_sbindir}/sl*
@@ -675,64 +680,6 @@ exit 0
 %{_mandir}/man3/*
 
 %changelog
-* Tue Dec 18 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-21
-- MozNSS Compat. Layer: Protect /tmp/openldap-tlsmc-* files (#1590184)
-
-* Tue Aug 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-20
-- Backport upstream fixes for ITS 7595 - add OpenSSL EC support (#1584922)
-
-* Tue Aug 14 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-19
-- Backport upstream fixes for ITS 7506 - fix OpenSSL DH params usage (#1584922)
-
-* Thu Jun 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-18
-- MozNSS Compat. Layer: Make log messages more clear (#1543955)
-- Build with LDAP_USE_NON_BLOCKING_TLS (#1471039)
-
-* Thu Jun 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-17
-- MozNSS Compat. Layer: Fix memleaks reported by valgrind (#1575549)
-- Reset OPTIND in libexec/functions for getopts to work in subsequent calls (#1564382)
-- MozNSS Compat. Layer: Fix typos, and spelling in the README file header (#1543451)
-
-* Wed Apr  4 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-16
-- fix: back-ldap StartTLS short connection timeout with high latency connections (#1540336)
-
-* Thu Mar 29 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-14
-- MozNSS Compat. Layer: Enforce fail when cannot extract CA certs (#1547922)
-
-* Wed Jan 31 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-13
-- MozNSS Compat. Layer: fix recursive directory deletion (#1516409)
-- MozNSS Compat. Layer: fix PIN disclaimer not always shown (#1516409)
-- MozNSS Compat. Layer: fix incorrect parsing of CACertDir (#1533955)
-
-* Thu Jan 11 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-12
-- MozNSS Compat. Layer: Ensure consistency of a PEM dir before usage (#1516409)
-  + Warn just before use of a PIN about key file extraction
-
-* Wed Jan 10 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-11
-- MozNSS Compat. Layer: Enable usage of NSS DB with PEM cert/key (#1525485)
-  + Fix a possible invalid dereference (covscan)
-
-* Tue Nov 28 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-10
-- Drop update-ppolicy-schema.sh scriptlet's output (#1487857)
-- Fix issues in MozNSS compatibility layer (#1400578)
-  + Force write file with fsync to avoid race conditions
-  + Always filestamp both sql and dbm NSS DB variants to not rely on default DB type prefix
-  + Allow missing cert and key which is a valid usecase
-  + Create extraction folder only in /tmp to simplify selinux rules
-  + Fix Covscan issues
-
-* Fri Nov  3 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-9
-- Build with OpenSSL and MozNSS compatibility layer instead of MozNSS (#1400578)
-
-* Thu Nov  2 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-8
-- fix: Upgrading to OpenLDAP >= 2.4.43 breaks server due to ppolicy changes (#1487857)
-
-* Thu Nov  2 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-7
-- fix: Manpage incorrectly states ./ldaprc config file is used (#1498841)
-
-* Thu Nov  2 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-6
-- fix: Upgrading openldap-servers does not restart slapd when rebasing (#1479309)
-
 * Tue Jun  6 2017 Matus Honek <mhonek@redhat.com> - 2.4.44-5
 - fix CVE-2017-9287 openldap: Double free vulnerability in servers/slapd/back-mdb/search.c (#1458210)
 

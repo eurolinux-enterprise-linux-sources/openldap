@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.44
-Release: 13%{?dist}
+Release: 15%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -660,6 +660,12 @@ exit 0
 %{_mandir}/man3/*
 
 %changelog
+* Tue Apr  3 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-15
+- Bump release to version 2.4.44-15
+
+* Thu Mar 29 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-14
+- MozNSS Compat. Layer: Enforce fail when cannot extract CA certs (#1563080)
+
 * Wed Jan 31 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-13
 - MozNSS Compat. Layer: fix recursive directory deletion (#1516409)
 - MozNSS Compat. Layer: fix PIN disclaimer not always shown (#1516409)

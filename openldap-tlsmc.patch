@@ -1,7 +1,7 @@
 MozNSS Interception Code
 
 Author: Matus Honek <mhonek@redhat.com>
-Date: Wed Jan 31 22:08:28 CET 2018
+Date: Wed Feb 21 20:04:11 CET 2018
 diff --git a/configure.in b/configure.in
 --- a/configure.in
 +++ b/configure.in
@@ -283,7 +283,7 @@ diff --git a/libraries/libldap/tls_mc.c b/libraries/libldap/tls_mc.c
 new file mode 100644
 --- /dev/null
 +++ b/libraries/libldap/tls_mc.c
-@@ -0,0 +1,1345 @@
+@@ -0,0 +1,1346 @@
 +#include "portable.h"
 +
 +#ifdef HAVE_MOZNSS_COMPATIBILITY
@@ -1375,6 +1375,7 @@ new file mode 100644
 +		Debug( LDAP_DEBUG_ANY,
 +		       "tlsmc_extract_nssdb: ERROR: could not export CA certificates.\n",
 +		       0, 0, 0 );
++		goto bail;
 +	}
 +
 +	if ( 0 == tlsmc_extract_cert_key_pair( *ld_cert, *ld_key, dir_name ) ) {

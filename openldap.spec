@@ -5,7 +5,7 @@
 
 Name: openldap
 Version: 2.4.44
-Release: 15%{?dist}
+Release: 20%{?dist}
 Summary: LDAP support libraries
 Group: System Environment/Daemons
 License: OpenLDAP
@@ -53,6 +53,13 @@ Patch25: openldap-man-ldap-conf.patch
 Patch35: openldap-ITS8428-init-sc_writewait.patch
 Patch36: openldap-bdb_idl_fetch_key-correct-key-pointer.patch
 Patch37: openldap-ITS8655-fix-double-free-on-paged-search-with-pagesize-0.patch
+Patch38: openldap-ITS8720-back-ldap-starttls-timeout.patch
+
+# fixes for DH and ECDH
+Patch50: openldap-openssl-its7506-fix-DH-params-1.patch
+Patch51: openldap-openssl-its7506-fix-DH-params-2.patch
+Patch52: openldap-openssl-ITS7595-Add-EC-support-1.patch
+Patch53: openldap-openssl-ITS7595-Add-EC-support-2.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
@@ -175,6 +182,11 @@ AUTOMAKE=%{_bindir}/true autoreconf -fi
 %patch35 -p1
 %patch36 -p1
 %patch37 -p1
+%patch38 -p1
+%patch50 -p1
+%patch51 -p1
+%patch52 -p1
+%patch53 -p1
 
 %patch102 -p1
 
@@ -217,7 +229,7 @@ popd
 export LDFLAGS="-pie"
 # avoid stray dependencies (linker flag --as-needed)
 # enable experimental support for LDAP over UDP (LDAP_CONNECTIONLESS)
-export CFLAGS="${CFLAGS} %{optflags} -Wl,-z,relro,-z,now,--as-needed -DLDAP_CONNECTIONLESS"
+export CFLAGS="${CFLAGS} %{optflags} -Wl,-z,relro,-z,now,--as-needed -DLDAP_CONNECTIONLESS -DLDAP_USE_NON_BLOCKING_TLS"
 
 pushd openldap-%{version}
 %configure \
@@ -660,11 +672,26 @@ exit 0
 %{_mandir}/man3/*
 
 %changelog
-* Tue Apr  3 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-15
-- Bump release to version 2.4.44-15
+* Tue Aug 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-20
+- Backport upstream fixes for ITS 7595 - add OpenSSL EC support (#1584922)
+
+* Tue Aug 14 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-19
+- Backport upstream fixes for ITS 7506 - fix OpenSSL DH params usage (#1584922)
+
+* Thu Jun 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-18
+- MozNSS Compat. Layer: Make log messages more clear (#1543955)
+- Build with LDAP_USE_NON_BLOCKING_TLS (#1471039)
+
+* Thu Jun 21 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-17
+- MozNSS Compat. Layer: Fix memleaks reported by valgrind (#1575549)
+- Reset OPTIND in libexec/functions for getopts to work in subsequent calls (#1564382)
+- MozNSS Compat. Layer: Fix typos, and spelling in the README file header (#1543451)
+
+* Wed Apr  4 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-16
+- fix: back-ldap StartTLS short connection timeout with high latency connections (#1540336)
 
 * Thu Mar 29 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-14
-- MozNSS Compat. Layer: Enforce fail when cannot extract CA certs (#1563080)
+- MozNSS Compat. Layer: Enforce fail when cannot extract CA certs (#1547922)
 
 * Wed Jan 31 2018 Matus Honek <mhonek@redhat.com> - 2.4.44-13
 - MozNSS Compat. Layer: fix recursive directory deletion (#1516409)

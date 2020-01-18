@@ -1,0 +1,23 @@
+commit ec2fe743f5795eb7aaf43687e6b257ac071cef22
+Author: Ryan Tandy <ryan@nardis.ca>
+Date:   Wed May 17 20:07:39 2017 -0700
+
+    ITS#8655 fix double free on paged search with pagesize 0
+    
+    Fixes a double free when a search includes the Paged Results control
+    with a page size of 0 and the search base matches the filter.
+
+diff --git a/servers/slapd/back-mdb/search.c b/servers/slapd/back-mdb/search.c
+index 009939d..d0db918 100644
+--- a/servers/slapd/back-mdb/search.c
++++ b/servers/slapd/back-mdb/search.c
+@@ -1066,7 +1066,8 @@ notfound:
+ 			/* check size limit */
+ 			if ( get_pagedresults(op) > SLAP_CONTROL_IGNORED ) {
+ 				if ( rs->sr_nentries >= ((PagedResultsState *)op->o_pagedresults_state)->ps_size ) {
+-					mdb_entry_return( op, e );
++					if (e != base)
++						mdb_entry_return( op, e );
+ 					e = NULL;
+ 					send_paged_response( op, rs, &lastid, tentries );
+ 					goto done;

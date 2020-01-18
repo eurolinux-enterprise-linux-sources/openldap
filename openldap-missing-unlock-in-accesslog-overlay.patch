@@ -1,0 +1,24 @@
+A mutex lock might not get unlocked when plausible
+
+In the preceding if-statement a mutex may get locked. This is unlocked on
+'done' label, but not called when plausible. Based on the current code logic
+this seems to not be able to happen, but might when code gets changed at 
+some point in time. This patch fixes the issue.
+
+The issue was found by Coverity scan 
+http://cov01.lab.eng.brq.redhat.com/covscanhub/waiving/11054/38577/
+
+Author: Matus Honek <mhonek@redhat.com>
+Resolves: #1261003
+
+--- a/servers/slapd/overlays/accesslog.c
++++ b/servers/slapd/overlays/accesslog.c
+@@ -1519,7 +1519,7 @@ static int accesslog_response(Operation *op, SlapReply *rs) {
+ 
+ 	/* ignore these internal reads */
+ 	if (( lo->mask & LOG_OP_READS ) && op->o_do_not_cache ) {
+-		return SLAP_CB_CONTINUE;
++		goto done;
+ 	}
+ 
+ 	if ( li->li_success && rs->sr_err != LDAP_SUCCESS )

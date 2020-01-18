@@ -1,0 +1,23 @@
+Skip any empty parameters when parsing command line options.
+This is required because systemd does not expand variables the same way as shell does,
+we need it because of an empty SLAPD_OPTIONS in environment file.
+
+Fedora specific patch.
+
+Author: Jan Vcelak <jvcelak@redhat.com>
+
+diff --git a/servers/slapd/main.c b/servers/slapd/main.c
+index dac4864..83614f4 100644
+--- a/servers/slapd/main.c
++++ b/servers/slapd/main.c
+@@ -685,6 +685,10 @@ unhandled_option:;
+ 		}
+ 	}
+ 
++	/* skip empty parameters */
++	while ( optind < argc && *argv[optind] == '\0' )
++		optind += 1;
++
+ 	if ( optind != argc )
+ 		goto unhandled_option;
+ 
